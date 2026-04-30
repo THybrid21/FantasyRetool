@@ -1,19 +1,19 @@
 import os
 import unittest
 
-from scripts.cat.enums import CatRank, CatGroup
+from scripts.events_module.thoughts import generate_thoughts
+from scripts.cat.enums import CatRank, CatGroup, CatThought
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 from scripts.cat.cats import Cat
-from scripts.cat.thoughts import Thoughts
 
 
 class TestNotWorkingThoughts(unittest.TestCase):
     def setUp(self):
-        self.main = Cat(status_dict={"rank": CatRank.WARRIOR})
-        self.other = Cat(status_dict={"rank": CatRank.WARRIOR})
+        self.main = Cat(status_dict={"rank": CatRank.WARRIOR}, disable_random=True)
+        self.other = Cat(status_dict={"rank": CatRank.WARRIOR}, disable_random=True)
         self.biome = "Forest"
         self.season = "Newleaf"
         self.camp = "camp2"
@@ -29,14 +29,10 @@ class TestNotWorkingThoughts(unittest.TestCase):
         possible = [
             thought
             for thought in self.thoughts
-            if Thoughts.cats_fulfill_thought_constraints(
+            if generate_thoughts._constraints_fulfilled(
                 self.main,
                 self.other,
                 thought,
-                "expanded",
-                self.biome,
-                self.season,
-                self.camp,
             )
         ]
 
@@ -95,17 +91,15 @@ class TestsGetStatusThought(unittest.TestCase):
         medicine = Cat(status_dict={"rank": CatRank.MEDICINE_CAT})
         warrior = Cat(status_dict={"rank": CatRank.WARRIOR})
         medicine.trait = "bold"
-        biome = "Forest"
-        season = "Newleaf"
-        camp = "camp2"
 
         # load thoughts
-        thoughts = Thoughts.load_thoughts(
-            medicine, warrior, "expanded", biome, season, camp
+        function_thoughts = generate_thoughts._load_group(
+            CatThought.WHILE_ALIVE,
+            medicine,
+            warrior,
         )
 
         # when
-        function_thoughts = thoughts
 
     def test_exiled_thoughts(self):
         # given
@@ -118,41 +112,42 @@ class TestsGetStatusThought(unittest.TestCase):
                 {"group": CatGroup.PLAYER_CLAN, "standing": ["member", "exiled"]}
             ],
         }
-        cat = Cat(status_dict=exiled_status, moons=40)
-        biome = "Forest"
-        season = "Newleaf"
-        camp = "camp2"
+        cat = Cat(status_dict=exiled_status, moons=40, disable_random=True)
 
         # load thoughts
-        thoughts = Thoughts.load_thoughts(cat, None, "expanded", biome, season, camp)
+        function_thoughts = generate_thoughts._load_group(
+            CatThought.WHILE_ALIVE, cat, None
+        )
 
     def test_lost_thoughts(self):
         # given
-        cat = Cat(status_dict={"rank": CatRank.WARRIOR}, moons=40)
+        cat = Cat(status_dict={"rank": CatRank.WARRIOR}, moons=40, disable_random=True)
         cat.status.become_lost()
-        biome = "Forest"
-        season = "Newleaf"
-        camp = "camp2"
 
         # load thoughts
-        thoughts = Thoughts.load_thoughts(cat, None, "expanded", biome, season, camp)
+        function_thoughts = generate_thoughts._load_group(
+            CatThought.WHILE_ALIVE,
+            cat,
+            None,
+        )
 
 
 class TestFamilyThoughts(unittest.TestCase):
     def test_family_thought_young_children(self):
         # given
-        parent = Cat(moons=40)
-        kit = Cat(parent1=parent.ID, moons=4)
-        biome = "Forest"
-        season = "Newleaf"
-        camp = "camp2"
+        parent = Cat(moons=40, disable_random=True)
+        kit = Cat(parent1=parent.ID, moons=4, disable_random=True)
 
         # when
-        function_thoughts1 = Thoughts.load_thoughts(
-            parent, kit, "expanded", biome, season, camp
+        function_thoughts1 = generate_thoughts._load_group(
+            CatThought.WHILE_ALIVE,
+            parent,
+            kit,
         )
-        function_thoughts2 = Thoughts.load_thoughts(
-            kit, parent, "expanded", biome, season, camp
+        function_thoughts2 = generate_thoughts._load_group(
+            CatThought.WHILE_ALIVE,
+            kit,
+            parent,
         )
 
         # then
@@ -164,8 +159,8 @@ class TestFamilyThoughts(unittest.TestCase):
 
     def test_family_thought_unrelated(self):
         # given
-        cat1 = Cat(moons=40)
-        cat2 = Cat(moons=40)
+        cat1 = Cat(moons=40, disable_random=True)
+        cat2 = Cat(moons=40, disable_random=True)
 
         # when
 

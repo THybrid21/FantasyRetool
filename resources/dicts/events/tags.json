@@ -76,12 +76,71 @@
     
     "relationship": [
         {
+            "tag": "strangers",
+            "setting": false,
+            "conflict": [
+                "strangers",
+                "siblings",
+                "-siblings",
+                "littermates",
+                "-littermates",
+                "mates",
+                "mates_with_pl",
+                "-mates",
+                "parent/child",
+                "-parent/child",
+                "child/parent",
+                "-child/parent",
+                "mentor/app",
+                "-mentor/app",
+                "app/mentor",
+                "-app/mentor"
+            ]
+        },
+        {
             "tag": "siblings",
             "setting": false,
             "conflict": ["mates",
-                         "not_mates",
-                         "parent/child",
-                         "child/parent"]
+                        "-siblings",
+                        "-mates",
+                        "parent/child",
+                        "child/parent"]
+        },
+        {
+            "tag": "-siblings",
+            "setting": false,
+            "conflict": ["siblings",
+                        "littermates",
+                        "parent/child",
+                        "child/parent",
+                        "mates",
+                        "-mates"]
+        },
+        {
+            "tag": "littermates",
+            "setting": false,
+            "conflict": ["siblings",
+                        "-siblings",
+                        "-littermates",
+                        "parent/child",
+                        "child/parent",
+                        "mates",
+                        "-mates",
+                        "mentor/app",
+                        "app/mentor"]
+        },
+        {
+            "tag": "-littermates",
+            "setting": false,
+            "conflict": ["siblings",
+                        "-siblings",
+                        "littermates",
+                        "parent/child",
+                        "child/parent",
+                        "mates",
+                        "-mates",
+                        "mentor/app",
+                        "app/mentor"]
         },
         {
             "tag": "mates",
@@ -91,10 +150,10 @@
                          "child/parent",
                          "app/mentor",
                          "mentor/app",
-                         "not_mates"]
+                         "-mates"]
         },
         {
-            "tag": "not_mates",
+            "tag": "-mates",
             "setting": false,
             "conflict": ["siblings",
                          "mates",
@@ -107,17 +166,39 @@
             "tag": "parent/child",
             "setting": false,
             "conflict": ["siblings",
+                         "-parent/child",
                          "mates",
-                         "not_mates",
+                         "-mates",
                          "child/parent",
+                         "app/mentor"]
+        },
+        {
+            "tag": "-parent/child",
+            "setting": false,
+            "conflict": ["siblings",
+                         "littermates",
+                         "mates",
+                         "child/parent",
+                         "parent/child",
                          "app/mentor"]
         },
         {
             "tag": "child/parent",
             "setting": false,
             "conflict": ["siblings",
+                        "-child/parent",
+                        "mates",
+                        "-mates",
+                        "parent/child",
+                        "mentor/app"]
+        },
+        {
+            "tag": "-child/parent",
+            "setting": false,
+            "conflict": ["siblings",
+                         "littermates",
                          "mates",
-                         "not_mates",
+                         "child/parent",
                          "parent/child",
                          "mentor/app"]
         },
@@ -125,15 +206,37 @@
             "tag": "app/mentor",
             "setting": false,
             "conflict": ["mates",
-                         "not_mates",
+                         "-app/mentor",
+                         "-mentor/app",
+                         "-mates",
                          "parent/child",
                          "mentor/app"]
+        },
+        {
+            "tag": "-app/mentor",
+            "setting": false,
+            "conflict": ["mates",
+                         "parent/child",
+                         "mentor/app",
+                         "app/mentor",
+                         "littermates"]
         },
         {
             "tag": "mentor/app",
             "setting": false,
             "conflict": ["mates",
-                         "not_mates",
+                         "-mentor/app",
+                         "-mates",
+                         "-app/mentor",
+                         "child/parent",
+                         "app/mentor"]
+        },
+        {
+            "tag": "-mentor/app",
+            "setting": false,
+            "conflict": ["mates",
+                         "mentor/app",
+                         "littermates",
                          "child/parent",
                          "app/mentor"]
         }

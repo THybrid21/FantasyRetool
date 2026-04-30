@@ -1,6 +1,7 @@
 {
     "en": {
         "seizure": "seizure",
+        "breathless fit": "breathless fit",
         "diarrhea": "diarrhea",
         "fleas": "fleas",
         "running nose": "running nose",
@@ -18,6 +19,8 @@
         "constant nightmares": "constant nightmares",
         "grief stricken": "grief-stricken",
         "malnourished": "malnourished",
-        "starving": "starving"
+        "starving": "starving",
+        "tick fever": "tick fever"
+
     }
 }

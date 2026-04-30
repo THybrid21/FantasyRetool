@@ -20,12 +20,8 @@
                     "m_c"
                 ],
                 "injuries": [
-                    "broken bone",
-                    "broken jaw",
-                    "broken back",
-                    "head damage"
-                ],
-                "scars": []
+                    "blunt_force_injury"
+                ]
             }
         ],
         "history": [
@@ -34,8 +30,7 @@
                     "m_c"
                 ],
                 "scar": "m_c was scarred after falling from a tree.",
-                "reg_death": "m_c died from {PRONOUN/m_c/poss} wounds after falling from a tree.",
-                "lead_death": ""
+                "death": "m_c died from {PRONOUN/m_c/poss} wounds after falling from a tree."
             }
         ]
     },
@@ -63,8 +58,7 @@
                     "claw-wound",
                     "mangled leg",
                     "mangled tail"
-                ],
-                "scars": []
+                ]
             }
         ],
         "history": [
@@ -73,8 +67,7 @@
                     "m_c"
                 ],
                 "scar": "m_c was scarred after an owl tried to carry {PRONOUN/m_c/object} off.",
-                "reg_death": "m_c died from {PRONOUN/m_c/poss} wounds after an owl tried to carry {PRONOUN/m_c/object} off.",
-                "lead_death": ""
+                "death": "m_c died from {PRONOUN/m_c/poss} wounds after an owl tried to carry {PRONOUN/m_c/object} off."
             }
         ]
     },
@@ -123,12 +116,8 @@
                     "m_c"
                 ],
                 "injuries": [
-                    "broken back",
-                    "broken jaw",
-                    "broken bone",
-                    "head damage"
-                ],
-                "scars": []
+                    "blunt_force_injury"
+                ]
             }
         ],
         "history": [
@@ -136,9 +125,7 @@
                 "cats": [
                     "m_c"
                 ],
-                "reg_death": "m_c died from {PRONOUN/m_c/poss} wounds after falling from a tall tree and breaking {PRONOUN/m_c/poss} back.",
-                "scar": "",
-                "lead_death": ""
+                "death": "m_c died from {PRONOUN/m_c/poss} wounds after falling from a tall tree and breaking {PRONOUN/m_c/poss} back."
             }
         ],
         "relationships": [
@@ -150,25 +137,30 @@
                     "r_c"
                 ],
                 "values": [
-                    "dislike"
-                ],
-                "amount": 10,
-                "mutual": false
-            },
-            {
-                "cats_from": [
-                    "m_c"
-                ],
-                "cats_to": [
-                    "r_c"
-                ],
-                "values": [
-                    "platonic",
                     "comfort",
                     "trust"
                 ],
-                "amount": -5,
-                "mutual": false
+                "amount": -10,
+                "mutual": false,
+                "log": {
+                    "cats_from": "cat_from was badly injured when cat_to dared {PRONOUN/cat_from/object} to climb a tree and {PRONOUN/cat_from/subject} fell."
+                }
+            },
+            {
+                "cats_from": [
+                    "r_c"
+                ],
+                "cats_to": [
+                    "m_c"
+                ],
+                "values": [
+                    "respect"
+                ],
+                "amount": 10,
+                "mutual": false,
+                "log": {
+                    "cats_from": "cat_from was impressed by cat_to's bravery when cat_from dared {PRONOUN/cat_to/object} to climb a tree, even though things ended in the medicine den."
+                }
             }
         ]
     },
@@ -205,7 +197,9 @@
                     "scrapes",
                     "small cut"
                 ],
-                "scars": []
+                "scars": [
+                    "QUILLSIDE", "SCRATCHSIDE"
+                ]
             }
         ]
     },
@@ -237,7 +231,7 @@
                     "mangled tail"
                 ],
                 "scars": [
-                    "MANTAIL"
+                    "HALFTAIL", "MANTAIL", "NOTAIL", "TAILSCAR"
                 ]
             }
         ],
@@ -247,8 +241,7 @@
                     "m_c"
                 ],
                 "scar": "m_c was scarred by a falling tree.",
-                "reg_death": "m_c died from {PRONOUN/m_c/poss} wounds after a tree fell on {PRONOUN/m_c/object}.",
-                "lead_death": "died from {PRONOUN/m_c/poss} wounds after a tree fell on {PRONOUN/m_c/object}"
+                "death": "m_c died from {PRONOUN/m_c/poss} wounds after a tree fell on {PRONOUN/m_c/object}."
             }
         ]
     },
@@ -279,12 +272,6 @@
                 "injuries": [
                     "burn",
                     "severe burn"
-                ],
-                "scars": [
-                    "BURNRUMP",
-                    "BURNTAIL",
-                    "BURNBELLY",
-                    "BURNPAWS"
                 ]
             }
         ],
@@ -294,8 +281,7 @@
                     "m_c"
                 ],
                 "scar": "m_c's pelt was burned by a forest fire.",
-                "reg_death": "m_c died from {PRONOUN/m_c/poss} burns after a forest fire.",
-                "lead_death": "died from {PRONOUN/m_c/poss} burns after a forest fire"
+                "death": "m_c died from {PRONOUN/m_c/poss} burns after a forest fire."
             }
         ]
     },
@@ -351,12 +337,6 @@
                 ],
                 "injuries": [
                     "severe burn"
-                ],
-                "scars": [
-                    "BURNPAWS",
-                    "BURNBELLY",
-                    "BURNTAIL",
-                    "BURNRUMP"
                 ]
             }
         ],
@@ -366,8 +346,7 @@
                     "m_c"
                 ],
                 "scar": "m_c's pelt was burned by a forest fire.",
-                "reg_death": "m_c died from {PRONOUN/m_c/poss} burns after a forest fire.",
-                "lead_death": "died from {PRONOUN/m_c/poss} burns after a forest fire"
+                "death": "m_c died from {PRONOUN/m_c/poss} burns after a forest fire."
             }
         ],
         "relationships": [
@@ -379,26 +358,14 @@
                     "m_c"
                 ],
                 "values": [
-                    "platonic",
-                    "comfort",
                     "trust",
                     "respect"
                 ],
                 "amount": 30,
-                "mutual": false
-            },
-            {
-                "cats_from": [
-                    "r_c"
-                ],
-                "cats_to": [
-                    "m_c"
-                ],
-                "values": [
-                    "dislike"
-                ],
-                "amount": -30,
-                "mutual": false
+                "mutual": false,
+                "log": {
+                    "cats_from": "cat_from was rescued from a burning nursery by cat_to, even at the expense of cat_to's pelt."
+                }
             }
         ]
     },
@@ -419,7 +386,7 @@
                 "mediator apprentice"
             ],
             "relationship_status": [
-                "platonic_10"
+                "likes"
             ],
             "trait": [
                 "daring",
@@ -439,8 +406,8 @@
                 "medicine cat apprentice",
                 "mediator apprentice"
             ],
-            "not_skill": [
-                "SWIMMER,1"
+            "skill": [
+                "-SWIMMER,1"
             ],
             "trait": [
                 "daring",
@@ -463,8 +430,7 @@
                 ],
                 "injuries": [
                     "cold_injury"
-                ],
-                "scars": []
+                ]
             }
         ],
         "history": [
@@ -474,8 +440,7 @@
                     "r_c"
                 ],
                 "scar": "m_c got frostbitten after falling into a frozen pond.",
-                "reg_death": "m_c died from the cold after falling into a frozen pond.",
-                "lead_death": ""
+                "death": "m_c died from the cold after falling into a frozen pond."
             }
         ],
         "relationships": [
@@ -490,8 +455,11 @@
                     "trust",
                     "respect"
                 ],
-                "amount": 5,
-                "mutual": false
+                "amount": 30,
+                "mutual": false,
+                "log": {
+                    "cats_from": "cat_to saved cat_from from drowning in a frozen pond."
+                }
             }
         ]
     },
@@ -531,8 +499,7 @@
                 ],
                 "injuries": [
                     "headache"
-                ],
-                "scars": []
+                ]
             }
         ]
     },
@@ -567,7 +534,9 @@
                     "scrapes",
                     "small cut"
                 ],
-                "scars": []
+                "scars": [
+                    "QUILLSIDE", "SCRATCHSIDE"
+                ]
             }
         ]
     }

@@ -9,7 +9,7 @@ import random
 import ujson
 
 from scripts.game_structure import constants
-from scripts.cat.enums import CatRank
+from scripts.cat.enums import CatRank, CatGroup, CatAge
 from scripts.housekeeping.datadir import get_save_dir
 
 
@@ -89,12 +89,12 @@ class Name:
             color = cat.pelt.colour
             eyes = cat.pelt.eye_colour
             pelt = cat.pelt.name
-            tortiepattern = cat.pelt.tortiepattern
+            tortie_pattern = cat.pelt.tortie_pattern
         except AttributeError:
             color = None
             eyes = None
             pelt = None
-            tortiepattern = None
+            tortie_pattern = None
 
         name_fixpref = False
         # Set prefix
@@ -105,7 +105,7 @@ class Name:
 
         # Set suffix
         if self.suffix is None:
-            self.give_suffix(pelt, biome, tortiepattern)
+            self.give_suffix(pelt, biome, tortie_pattern)
             if name_fixpref and self.prefix is None:
                 # needed for random dice when we're changing the Prefix
                 name_fixpref = False
@@ -150,7 +150,7 @@ class Name:
                 if name_fixpref:
                     self.give_prefix(eyes, color, biome)
                 else:
-                    self.give_suffix(pelt, biome, tortiepattern)
+                    self.give_suffix(pelt, biome, tortie_pattern)
 
                 nono_name = self.prefix + self.suffix
                 possible_three_letter = (
@@ -230,7 +230,7 @@ class Name:
                 names.prefix_history.pop(0)
 
     # Generate possible suffix
-    def give_suffix(self, pelt, biome, tortiepattern):
+    def give_suffix(self, pelt, biome, tortie_pattern):
         """Generate possible suffix."""
         if pelt is None or pelt == "SingleColour":
             self.suffix = random.choice(self.names_dict["normal_suffixes"])
@@ -241,10 +241,10 @@ class Name:
             if named_after_pelt:
                 if (
                     pelt in ("Tortie", "Calico")
-                    and tortiepattern in self.names_dict["tortie_pelt_suffixes"]
+                    and tortie_pattern in self.names_dict["tortie_pelt_suffixes"]
                 ):
                     self.suffix = random.choice(
-                        self.names_dict["tortie_pelt_suffixes"][tortiepattern]
+                        self.names_dict["tortie_pelt_suffixes"][tortie_pattern]
                     )
                 elif pelt in self.names_dict["pelt_suffixes"]:
                     self.suffix = random.choice(self.names_dict["pelt_suffixes"][pelt])
@@ -260,25 +260,49 @@ class Name:
             else:
                 self.suffix = random.choice(self.names_dict["normal_suffixes"])
 
+    def get_specsuffix_name(self, rank: CatRank = CatRank.LEADER):
+        """
+        Return the cat's name with the appropriate special suffix. If no specsuffix is given for that rank, returns
+        default prefix + suffix. If specsuffix_hidden is true, return default prefix + suffix.
+        :param rank: CatRank matching
+        :return: Cat's name string
+        """
+        if rank in self.names_dict["special_suffixes"] and not self.specsuffix_hidden:
+            return self.prefix + self.names_dict["special_suffixes"][rank]
+
+        return self.prefix + self.suffix
+
     def __repr__(self):
         # Handles predefined suffixes (such as newborns being kit),
         # then suffixes based on ages (fixes #2004, just trust me)
 
         # Handles suffix assignment with outside cats
-        if self.cat.status.is_former_clancat:
-            if self.cat.moons == 0:
-                adjusted_status = CatRank.NEWBORN
-            elif self.cat.moons < 6:
-                adjusted_status = CatRank.KITTEN
-            elif self.cat.moons < 12:
-                adjusted_status = CatRank.APPRENTICE
+        if (
+            self.cat.status.is_lost(CatGroup.PLAYER_CLAN_ID)
+            and not self.cat.status.is_former_clancat
+            and self.suffix
+        ):
+            # these are cats who were born to a parent who'd been lost frm their clan, and who's parent decided to keep with traditional naming
+            age_to_rank = {
+                CatAge.NEWBORN: CatRank.NEWBORN,
+                CatAge.KITTEN: CatRank.KITTEN,
+                CatAge.ADOLESCENT: CatRank.APPRENTICE,
+            }
+            if self.cat.age in age_to_rank:
+                rank = age_to_rank[self.cat.age]
+                return self.prefix + self.names_dict["special_suffixes"][rank]
             else:
-                adjusted_status = CatRank.WARRIOR
+                return self.prefix + self.suffix
 
-            if adjusted_status != CatRank.WARRIOR and not self.specsuffix_hidden:
-                return (
-                    self.prefix + self.names_dict["special_suffixes"][adjusted_status]
-                )
+        if self.cat.status.is_former_clancat:
+            old_rank = self.cat.status.find_prior_clan_rank()
+
+            if (
+                old_rank in self.names_dict["special_suffixes"]
+                and not self.specsuffix_hidden
+            ):
+                return self.prefix + self.names_dict["special_suffixes"][old_rank]
+
         if (
             self.cat.status.rank in self.names_dict["special_suffixes"]
             and not self.specsuffix_hidden

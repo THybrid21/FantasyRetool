@@ -1,4 +1,6 @@
+import statistics
 from random import choice, randint, choices
+from typing import Optional
 
 import i18n
 
@@ -8,15 +10,10 @@ from scripts.clan_resources.herb.herb import Herb, HERBS
 from scripts.clan_resources.herb.herb_effects import HerbEffect
 from scripts.clan_resources.supply import Supply
 from scripts.game_structure import constants
-from scripts.game_structure.game_essentials import game
+from scripts.game_structure import game
 from scripts.game_structure.localization import load_lang_resource
-from scripts.utility import (
-    adjust_list_text,
-    event_text_adjust,
-    PERMANENT,
-    ILLNESSES,
-    INJURIES,
-)
+from scripts.cat.constants import ILLNESSES, INJURIES, PERMANENT
+from scripts.events_module.text_adjust import event_text_adjust, adjust_list_text
 from collections import defaultdict
 
 
@@ -118,7 +115,7 @@ class HerbSupply:
         """
         returns the lowest qualifier for a low supply
         """
-        return 1
+        return 0
 
     @property
     def adequate_qualifier(self) -> int:
@@ -159,7 +156,7 @@ class HerbSupply:
         """
         takes given clan_size and multiplies it by the required_herbs_per_cat from constants.CONFIG
         """
-        self.required_herb_count = (
+        self.required_herb_count = int(
             clan_size
             * constants.CONFIG["clan_resources"]["herbs"]["required_herbs_per_cat"]
         )
@@ -208,7 +205,9 @@ class HerbSupply:
             # a whole. also helps prevent death spiral when med cats aren't able to work.
             if not med_cats and not kitty.status.rank.is_any_medicine_rank():
                 break
+
             severities = []
+
             conditions = kitty.permanent_condition.copy()
             conditions.update(kitty.injuries)
             conditions.update(kitty.illnesses)
@@ -277,7 +276,7 @@ class HerbSupply:
         """
         returns the rating of given supply, aka how "full" the supply is compared to clan size
         """
-        if not self.entire_supply:
+        if self.total <= 0:
             return Supply.EMPTY
 
         lowest_herb = self.sorted_by_lowest[0]
@@ -286,7 +285,7 @@ class HerbSupply:
             self.total_of_herb(lowest_herb) + self.total_of_herb(highest_herb)
         ) / 2
 
-        if self.low_qualifier <= average_count <= self.adequate_qualifier:
+        if self.low_qualifier < average_count <= self.adequate_qualifier:
             return Supply.LOW
         if self.adequate_qualifier < average_count <= self.full_qualifier:
             return Supply.ADEQUATE
@@ -335,9 +334,10 @@ class HerbSupply:
         """
         returns int total supply of given herb
         """
-        return sum(
-            [stock for stock in self.storage.get(herb, [0])]
-        ) + self.collected.get(herb, 0)
+        return int(
+            sum([stock for stock in self.storage.get(herb, [0])])
+            + self.collected.get(herb, 0)
+        )
 
     def get_highest_herb_in_group(self, group) -> str:
         """
@@ -369,7 +369,7 @@ class HerbSupply:
         :param herb: herb to remove
         :param num_removed: POSITIVE number of herbs to remove
         """
-        surplus = self._remove_from_storage(herb, num_removed)
+        surplus = self._remove_from_storage(herb, int(num_removed))
 
         if surplus and self.collected.get(herb, []):
             self.collected[herb] -= surplus
@@ -385,13 +385,12 @@ class HerbSupply:
 
         # get herbs found
         herb_list = []
-        list_of_herb_strs = []
         for med in med_cats:
             if assistants:
                 list_of_herb_strs, found_herbs = game.clan.herb_supply.get_found_herbs(
                     med,
                     general_amount_bonus=True,
-                    specific_quantity_bonus=len(assistants),
+                    specific_quantity_bonus=2,
                 )
             else:
                 list_of_herb_strs, found_herbs = game.clan.herb_supply.get_found_herbs(
@@ -434,8 +433,8 @@ class HerbSupply:
         :param specific_quantity_bonus: a specific float to multiply the gathered herb amount by
         """
         # meds with relevant skills will get a boost to the herbs they find
-        # SENSE finds larger amount of herbs
-        # CLEVER finds greater quantity of herbs
+        # SENSE finds wider types of herbs (3 moss, 1 lungwort, 2 catmint)
+        # CLEVER finds greater quantity of herbs (5 moss, 6 lungwort)
         primary = med_cat.skills.primary.path
         secondary = None
         if med_cat.skills.secondary:
@@ -495,36 +494,33 @@ class HerbSupply:
                 break
 
             # rarity is set to 0 if the herb can't be found in the current season
-            if not self.herb[herb].get_rarity(
+            rarity = self.herb[herb].get_rarity(
                 game.clan.biome
                 if not game.clan.override_biome
                 else game.clan.override_biome,
                 game.clan.current_season,
-            ):
+            )
+            if not rarity:
                 continue
 
-            # chance to find a herb is based on it's rarity
-            if (
-                randint(
+            # chance to find an herb is based on its rarity
+            if randint(1, rarity) == 1:
+                if rarity in (5, 6):
+                    quantity_modifier = quantity_modifier / 2
+                elif rarity in (1, 2):
+                    quantity_modifier += 1
+                found_herbs[herb] = max(
                     1,
-                    self.herb[herb].get_rarity(
-                        game.clan.biome
-                        if not game.clan.override_biome
-                        else game.clan.override_biome,
-                        game.clan.current_season,
+                    int(
+                        choices(population=[2, 3, 4], weights=weight, k=1)[0]
+                        * quantity_modifier
                     ),
-                )
-                == 1
-            ):
-                found_herbs[herb] = int(
-                    choices(population=[1, 2, 3], weights=weight, k=1)[0]
-                    * quantity_modifier
                 )
                 amount_of_herbs -= 1
 
         return self.handle_found_herbs_outcomes(found_herbs)
 
-    def handle_found_herbs_outcomes(self, found_herbs: dict = {}):
+    def handle_found_herbs_outcomes(self, found_herbs: dict = None):
         """
         Handles adding herbs to the collection and preparing outcome for patrols
         """
@@ -637,7 +633,12 @@ class HerbSupply:
                 return
 
             self.in_need_of.extend(
-                [x for x in required_herbs if x not in self.in_need_of]
+                [
+                    x
+                    for x in required_herbs
+                    if x not in self.in_need_of
+                    and self.get_herb_rating(x) in (Supply.EMPTY, Supply.LOW)
+                ]
             )
 
             # find the possible effects of herb for the condition
@@ -657,6 +658,23 @@ class HerbSupply:
                 return
 
             chosen_effect = choice(possible_effects)
+
+            if (
+                treatment_cat.is_disabled()
+                and name in treatment_cat.permanent_condition
+            ):
+                # if chance of death is already low, med cat doesn't treat
+                if condition.get("mortality") and condition.get("mortality", 0) > 20:
+                    self.__apply_lack_of_herb(treatment_cat, name, chosen_effect)
+                    return
+                # if chance of risk is already low, med cat doesn't treat
+                no_treatment = False
+                for risk in condition.get("risks", []):
+                    if risk["chance"] > 20:
+                        self.__apply_lack_of_herb(treatment_cat, name, chosen_effect)
+                        no_treatment = True
+                if no_treatment:
+                    return
 
             if game.clan.game_mode == "classic":
                 # classic always applies basic treatment, regardless of herb supply
@@ -680,7 +698,7 @@ class HerbSupply:
                 total_herb_amount = self.get_single_herb_total(herb_used)
 
                 amount_used = randint(
-                    1, total_herb_amount if total_herb_amount < 4 else 4
+                    1, total_herb_amount if total_herb_amount < 3 else 3
                 )
                 strength = 1
                 for level, herb_list in source_dict[name]["herbs"].items():
@@ -751,6 +769,8 @@ class HerbSupply:
             con_info = treated_cat.injuries[condition]
         else:
             con_info = treated_cat.permanent_condition[condition]
+            if con_info["born_with"] and con_info["moons_until"] != -2:
+                return
 
         amt_modifier = amount_used
 
@@ -809,7 +829,7 @@ class HerbSupply:
     @staticmethod
     def __apply_lack_of_herb(treatment_cat, condition: str, effect):
         """
-        if the condition is a perm condition, give some consequence for not treated it
+        if the condition is a perm condition or redcough, give some consequence for not treated it
         """
         # TODO: this kinda feels like something that should happen within a theoretical condition class...
 
@@ -820,20 +840,23 @@ class HerbSupply:
             return
 
         # grab the correct condition dict so that we can modify it
-        con_info = treatment_cat.permanent_condition[condition]
+        if condition == "redcough":
+            con_info = treatment_cat.illnesses[condition]
+        else:
+            con_info = treatment_cat.permanent_condition[condition]
 
         if effect == HerbEffect.RISK:
             for risk in con_info[effect]:
-                risk["chance"] -= randint(2, 4)
+                risk["chance"] -= randint(1, 3)
                 if risk["chance"] <= 1:
                     risk["chance"] = 2
         elif effect == HerbEffect.MORTALITY:
-            con_info[effect] -= randint(2, 4)
+            con_info[effect] -= randint(1, 3)
             if con_info[effect] <= 1:
                 con_info[effect] = 2
 
 
-MESSAGES = None
+MESSAGES: Optional[dict] = None
 message_lang = None
 
 

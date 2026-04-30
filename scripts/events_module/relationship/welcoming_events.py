@@ -6,13 +6,12 @@ import i18n
 
 from scripts.game_structure import constants
 from scripts.cat.cats import Cat
+from scripts.cat_relations.enums import RelType
 from scripts.cat.enums import CatRank
 from scripts.event_class import Single_Event
-from scripts.game_structure.game_essentials import game
-from scripts.utility import (
-    change_relationship_values,
-    event_text_adjust,
-)
+from scripts.game_structure import game
+from scripts.events_module.text_adjust import event_text_adjust
+from scripts.events_module.consequences import change_relationship_values
 from scripts.game_structure.localization import load_lang_resource
 
 
@@ -72,27 +71,25 @@ class Welcoming_Events:
         # influence the relationship
         new_to_clan_cat = constants.CONFIG["new_cat"]["rel_buff"]["new_to_clan_cat"]
         clan_cat_to_new = constants.CONFIG["new_cat"]["rel_buff"]["clan_cat_to_new"]
+
+        # the effect is set through the settings, therefore a rough assumption has to be made
+        if any(val > 0 for val in clan_cat_to_new.values()):
+            effect = " (positive effect)"
+        else:
+            effect = " (negative effect)"
+        interaction_str += effect
+
         change_relationship_values(
             cats_to=[clan_cat],
             cats_from=[new_cat],
-            romantic_love=new_to_clan_cat["romantic"],
-            platonic_like=new_to_clan_cat["platonic"],
-            dislike=new_to_clan_cat["dislike"],
-            admiration=new_to_clan_cat["admiration"],
-            comfortable=new_to_clan_cat["comfortable"],
-            jealousy=new_to_clan_cat["jealousy"],
-            trust=new_to_clan_cat["trust"],
+            log=interaction_str,
+            **new_to_clan_cat,
         )
         change_relationship_values(
             cats_to=[new_cat],
             cats_from=[clan_cat],
-            romantic_love=clan_cat_to_new["romantic"],
-            platonic_like=clan_cat_to_new["platonic"],
-            dislike=clan_cat_to_new["dislike"],
-            admiration=clan_cat_to_new["admiration"],
-            comfortable=clan_cat_to_new["comfortable"],
-            jealousy=clan_cat_to_new["jealousy"],
-            trust=clan_cat_to_new["trust"],
+            log=interaction_str,
+            **clan_cat_to_new,
         )
 
         # add it to the event list
@@ -104,44 +101,6 @@ class Welcoming_Events:
                 cat_dict={"m_c": new_cat, "r_c": clan_cat},
             )
         )
-
-        # the effect is set through the settings, therefore a rough assumption has to be made
-        effect = " (neutral effect)"
-        if (
-            clan_cat_to_new["romantic"] > 0
-            or clan_cat_to_new["platonic"] > 0
-            or clan_cat_to_new["admiration"] > 0
-            or new_to_clan_cat["comfortable"] > 0
-            or clan_cat_to_new["trust"] > 0
-        ):
-            effect = " (positive effect)"
-        elif clan_cat_to_new["dislike"] > 0 or clan_cat_to_new["jealousy"] > 0:
-            effect = " (negative effect)"
-
-        interaction_str += effect
-
-        # add to relationship logs
-        if new_cat.ID in clan_cat.relationships:
-            clan_cat.relationships[new_cat.ID].log.append(
-                interaction_str
-                + i18n.t(
-                    "relationships.age_postscript",
-                    name=str(clan_cat.name),
-                    count=clan_cat.moons,
-                )
-            )
-
-            new_cat.relationships[clan_cat.ID].link_relationship()
-
-        if clan_cat.ID in new_cat.relationships:
-            clan_cat.relationships[new_cat.ID].log.append(
-                interaction_str
-                + i18n.t(
-                    "relationships.age_postscript",
-                    name=str(new_cat.name),
-                    count=new_cat.moons,
-                )
-            )
 
     @staticmethod
     def rebuild_dicts():
@@ -214,7 +173,7 @@ class Welcoming_Events:
                     and "under" not in interaction.new_cat_moons
                 ):
                     print(
-                        f"ERROR: The new cat welcoming event {interaction.id} has a not valid moon restriction for the new cat."
+                        f"ERROR: The new cat welcoming event {interaction.id} has an invalid moon restriction for the new cat."
                     )
                     continue
 
