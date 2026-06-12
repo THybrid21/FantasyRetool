@@ -192,8 +192,12 @@ class Skill:
     def __repr__(self) -> str:
         return f"<Skill: {self.path}, {self.points}, {self.tier}, {self.interest_only}>"
 
-    def get_short_skill(self):
-        return Skill.short_strings.get(self.path, "???")
+    def get_short_skill_string(self):
+        """
+        Returns a localized short string descriptor of the skill
+        :return: string representing the skill
+        """
+        return i18n.t(f"cat.skills.{Skill.short_strings.get(self.path, 'unknown')}")
 
     @staticmethod
     def generate_from_save_string(save_string: str):
@@ -270,8 +274,8 @@ class Skill:
         print("Can't set tier directly")
 
     def set_points_to_tier(self, tier: int):
-        """This is seperate from the tier setter, since it will booonly allow you
-        to set points to tier 1, 2, or 3, and never 0. Tier 0 is retricted to interest_only
+        """This is separate from the tier setter, since it will only allow you
+        to set points to tier 1, 2, or 3, and never 0. Tier 0 is restricted to interest_only
         skills"""
 
         # Make sure it in the right range. If not, return.
@@ -361,21 +365,19 @@ class CatSkills:
         return f"<CatSkills: Primary: |{self.primary}|, Secondary: |{self.secondary}|, Hidden: |{self.hidden}|>"
 
     @staticmethod
-    def generate_new_catskills(rank, moons, hidden_skill: HiddenSkillEnum = None):
+    def generate_new_catskills(
+        rank: CatRank, age: CatAge, hidden_skill: HiddenSkillEnum = None
+    ):
         """Generates a new skill"""
         new_skill = CatSkills()
 
         new_skill.hidden = hidden_skill
 
-        if rank == CatRank.NEWBORN or moons <= 0:
+        if rank == CatRank.NEWBORN or age == CatAge.NEWBORN:
             pass
-        elif rank == CatRank.KITTEN or moons < 6:
+        elif rank == CatRank.KITTEN or age == CatAge.KITTEN:
             new_skill.primary = Skill.get_random_skill(points=0, interest_only=True)
-        elif rank in [
-            CatRank.APPRENTICE,
-            CatRank.MEDICINE_APPRENTICE,
-            CatRank.MEDIATOR_APPRENTICE,
-        ]:
+        elif rank.is_any_apprentice_rank() or age == CatAge.ADOLESCENT:
             new_skill.primary = Skill.get_random_skill(point_tier=1, interest_only=True)
             if random.randint(1, 3) == 1:
                 new_skill.secondary = Skill.get_random_skill(
@@ -384,15 +386,18 @@ class CatSkills:
         else:
             primary_tier = 1
             secondary_tier = 1
-            if moons < 50:
+            if age == CatAge.YOUNG_ADULT:
                 primary_tier += random.randint(0, 1)
                 secondary_tier += random.randint(0, 1)
-            elif moons < 100:
+            elif age == CatAge.ADULT:
                 primary_tier += random.randint(0, 2)
                 secondary_tier += random.randint(0, 1)
-            elif moons < 150:
+            elif age == CatAge.SENIOR_ADULT:
                 primary_tier += random.randint(1, 2)
                 secondary_tier += random.randint(0, 1)
+            elif age == CatAge.SENIOR:
+                primary_tier -= random.randint(0, 1)
+
             new_skill.primary = Skill.get_random_skill(point_tier=primary_tier)
             if random.randint(1, 2) == 1:
                 new_skill.secondary = Skill.get_random_skill(
@@ -413,9 +418,9 @@ class CatSkills:
 
         if short:
             if self.primary:
-                output.append(i18n.t(f"cat.skills.{self.primary.get_short_skill()}"))
+                output.append(self.primary.get_short_skill_string())
             if self.secondary:
-                output.append(i18n.t(f"cat.skills.{self.secondary.get_short_skill()}"))
+                output.append(self.secondary.get_short_skill_string())
         else:
             if self.primary:
                 output.append(i18n.t(f"cat.skills.{self.primary.skill}"))
@@ -500,14 +505,14 @@ class CatSkills:
                 self.primary = Skill(
                     random.choice(parental_paths),
                     points=0,
-                    interest_only=the_cat.status.rank
-                    in (CatRank.APPRENTICE, CatRank.KITTEN),
+                    interest_only=the_cat.status.rank.is_any_apprentice_rank()
+                    or the_cat.status.rank == CatRank.KITTEN,
                 )
             else:
                 self.primary = Skill.get_random_skill(
                     points=0,
-                    interest_only=the_cat.status.rank
-                    in (CatRank.APPRENTICE, CatRank.KITTEN),
+                    interest_only=the_cat.status.rank.is_any_apprentice_rank()
+                    or the_cat.status.rank == CatRank.KITTEN,
                 )
 
         if the_cat.status.is_clancat:
@@ -618,8 +623,7 @@ class CatSkills:
                 try:
                     path = HiddenSkillEnum[path]
                 except KeyError:
-                    print(f"{path} is not a real skill path")
-                    return False
+                    raise KeyError(f"{path} is not a real skill path")
 
         if isinstance(path, HiddenSkillEnum):
             if path == self.hidden:
@@ -661,7 +665,7 @@ class CatSkills:
         return skills_meet
 
     @staticmethod
-    def get_skills_from_old(old_skill, rank, moons):
+    def get_skills_from_old(old_skill, rank: CatRank, age: CatAge):
         """Generates a CatSkill object"""
         new_skill = CatSkills()
         conversion = {
@@ -711,6 +715,6 @@ class CatSkills:
             new_skill.primary = Skill(conversion[old_skill][0])
             new_skill.primary.set_points_to_tier(conversion[old_skill][1])
         else:
-            new_skill = CatSkills.generate_new_catskills(rank, moons)
+            new_skill = CatSkills.generate_new_catskills(rank, age)
 
         return new_skill

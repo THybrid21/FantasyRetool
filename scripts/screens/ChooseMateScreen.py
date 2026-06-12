@@ -5,23 +5,20 @@ import pygame.transform
 import pygame_gui.elements
 
 from scripts.cat.cats import Cat
+from scripts.cat_relations.inheritance2 import inheritance_db
 from scripts.game_structure import image_cache
-from scripts.game_structure.game_essentials import game
-from scripts.game_structure.ui_elements import (
-    UIImageButton,
-    UISpriteButton,
-    UISurfaceImageButton,
-)
-from scripts.utility import (
-    get_personality_compatibility,
-    get_text_box_theme,
-    ui_scale,
-    ui_scale_dimensions,
-    ui_scale_offset,
-    shorten_text_to_fit,
-)
+from ..ui.elements.sprite_button import UISpriteButton
+from ..ui.elements.image_button import UIImageButton
+from ..ui.elements.surface_image_button import UISurfaceImageButton
+from ..ui.theme import get_text_box_theme
+from ..events_module.text_adjust import shorten_text_to_fit
+from ..events_module.event_filters import get_personality_compatibility
+from ..ui.scale import ui_scale, ui_scale_dimensions, ui_scale_offset
 from .Screens import Screens
+from .enums import GameScreen
+from ..cat.enums import CatCompatibility
 from ..clan_package.settings import get_clan_setting
+from ..game_structure import constants
 from ..game_structure.game.switches import switch_set_value, switch_get_value, Switch
 from ..game_structure.screen_settings import MANAGER
 from ..ui.generate_box import BoxStyles, get_box
@@ -100,7 +97,7 @@ class ChooseMateScreen(Screens):
         self.work_thread = None
 
         # for mate calculations
-        self.species_dict = game.species["species"]
+        self.species_dict = constants.SPECIES["species"]
 
     def handle_event(self, event):
         """Handles events."""
@@ -110,7 +107,7 @@ class ChooseMateScreen(Screens):
             # Cat buttons list
             if event.ui_element == self.back_button:
                 self.selected_mate_index = 0
-                self.change_screen("profile screen")
+                self.change_screen(GameScreen.PROFILE)
             elif event.ui_element == self.toggle_mate:
                 if self.work_thread is not None and self.work_thread.is_alive():
                     return
@@ -189,7 +186,7 @@ class ChooseMateScreen(Screens):
                     return
 
                 switch_set_value(Switch.cat, event.ui_element.cat_object.ID)
-                self.change_screen("profile screen")
+                self.change_screen(GameScreen.PROFILE)
 
     def screen_switches(self):
         """Sets up the elements that are always on the page"""
@@ -498,7 +495,7 @@ class ChooseMateScreen(Screens):
         and the page"""
         self.all_offspring = [
             Cat.fetch_cat(i)
-            for i in list(self.the_cat.inheritance.kits)
+            for i in inheritance_db.get_children(self.the_cat.ID)
             if isinstance(Cat.fetch_cat(i), Cat)
         ]
         if self.selected_cat and self.kits_selected_pair:
@@ -804,8 +801,7 @@ class ChooseMateScreen(Screens):
         """Updates all elements with the current cat, as well as the selected cat.
         Called when the screen switched, and whenever the focused cat is switched"""
         self.the_cat = Cat.all_cats[switch_get_value(Switch.cat)]
-        if not self.the_cat.inheritance:
-            self.the_cat.create_inheritance_new_cat()
+        self.the_cat.create_inheritance_new_cat()
 
         (
             self.next_cat,
@@ -1117,22 +1113,20 @@ class ChooseMateScreen(Screens):
 
     def draw_compatible_line_affection(self):
         """Draws the heart-line based on capability, and draws the hearts based on romantic love."""
+        compatibility = get_personality_compatibility(self.the_cat, self.selected_cat)
+
+        if compatibility == CatCompatibility.POSITIVE:
+            line = "resources/images/line_compatible.png"
+        elif compatibility == CatCompatibility.NEGATIVE:
+            line = "resources/images/line_incompatible.png"
+        else:
+            line = "resources/images/line_neutral.png"
 
         # Set the lines
         self.selected_cat_elements["compat_line"] = pygame_gui.elements.UIImage(
             ui_scale(pygame.Rect((0, 190), (200, 78))),
             pygame.transform.scale(
-                image_cache.load_image(
-                    "resources/images/line_compatible.png"
-                    if get_personality_compatibility(self.the_cat, self.selected_cat)
-                    else (
-                        "resources/images/line_incompatible.png"
-                        if not get_personality_compatibility(
-                            self.the_cat, self.selected_cat
-                        )
-                        else "resources/images/line_neutral.png"
-                    )
-                ).convert_alpha(),
+                image_cache.load_image(line).convert_alpha(),
                 ui_scale_dimensions((200, 78)),
             ),
             anchors={"centerx": "centerx"},
@@ -1146,7 +1140,7 @@ class ChooseMateScreen(Screens):
                 relation = self.the_cat.relationships[self.selected_cat.ID]
             else:
                 relation = self.the_cat.create_one_relationship(self.selected_cat)
-            romantic_love = relation.romantic_love
+            romantic_love = relation.romance
 
         if 10 <= romantic_love <= 30:
             heart_number = 1
@@ -1178,7 +1172,7 @@ class ChooseMateScreen(Screens):
                 relation = self.selected_cat.relationships[self.the_cat.ID]
             else:
                 relation = self.selected_cat.create_one_relationship(self.the_cat)
-            romantic_love = relation.romantic_love
+            romantic_love = relation.romance
 
         if 10 <= romantic_love <= 30:
             heart_number = 1
@@ -1210,7 +1204,7 @@ class ChooseMateScreen(Screens):
     def get_valid_mates(self):
         """Get a list of valid mates for the current cat"""
 
-        # Behold! The uglest list comprehension ever created!
+        # Behold! The ugliest list comprehension ever created!
         valid_mates = [
             i
             for i in Cat.all_cats_list
@@ -1219,6 +1213,7 @@ class ChooseMateScreen(Screens):
                 i, for_love_interest=False, age_restriction=False, ignore_no_mates=True
             )
             and i.status.is_outsider == self.the_cat.status.is_outsider
+            and i.status.group_ID == self.the_cat.status.group_ID
             and i.ID not in self.the_cat.mate
             and (not self.single_only or not i.mate)
             and (
@@ -1250,6 +1245,3 @@ class ChooseMateScreen(Screens):
         ]
 
         return valid_mates
-
-    def chunks(self, L, n):
-        return [L[x : x + n] for x in range(0, len(L), n)]

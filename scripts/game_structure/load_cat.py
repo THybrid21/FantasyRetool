@@ -7,6 +7,9 @@ import i18n
 import ujson
 
 from scripts.cat.cats import Cat, BACKSTORIES
+from scripts.cat.save_load import load_faded_cat_ids
+from scripts.cat_relations.inheritance2 import inheritance_db
+from scripts.cat.save_load import get_faded_ids
 from ..cat.enums import CatGroup, CatRank
 from scripts.cat.pelts import Pelt
 from scripts.cat_relations.inheritance import Inheritance
@@ -15,19 +18,25 @@ from scripts.game_structure.game.switches import (
     switch_set_value,
     Switch,
 )
-from scripts.game_structure.localization import get_new_pronouns
+from ..cat.pronouns import get_new_pronouns
 from scripts.housekeeping.version import SAVE_VERSION_NUMBER
 from scripts.game_structure import constants
-from .game_essentials import game
+from scripts.game_structure import game
 from ..cat.personality import Personality
 from ..cat.skills import CatSkills
 from ..cat.status import StatusDict
+from ..clan_resources.point_of_interest import (
+    clear_pois,
+    generate_and_add_new_poi,
+    PoiType,
+)
 from ..housekeeping.datadir import get_save_dir
 
 logger = logging.getLogger(__name__)
 
 
 def load_cats():
+    load_faded_cat_ids(switch_get_value(Switch.clan_save_id))
     try:
         json_load()
     except FileNotFoundError:
@@ -42,7 +51,7 @@ def load_cats():
 def json_load():
     Cat.all_cats.clear()
     Cat.all_cats_list.clear()
-    Cat.dead_cats.clear()
+
     all_cats = []
     clanname = switch_get_value(Switch.clan_list)[0]
     clan_cats_json_path = f"{get_save_dir()}/{clanname}/clan_cats.json"
@@ -111,6 +120,17 @@ def json_load():
                 if cat["eye_colour2"] == "BLUE2":
                     cat["eye_colour2"] = "COBALT"
 
+            if "tint" in cat:
+                if cat["tint"] == "none":
+                    cat["tint"] = None
+            if "white_patches_tint" in cat:
+                if cat["white_patches_tint"] == "none":
+                    cat["white_patches_tint"] = None
+
+            if "pattern" in cat:
+                cat["tortie_marking"] = cat["pattern"]
+                del cat["pattern"]
+
             new_cat.pelt = Pelt(
                 name=cat["pelt_name"],
                 length=cat["pelt_length"],
@@ -118,6 +138,7 @@ def json_load():
                 eye_color=cat["eye_colour"],
                 eye_colour2=cat["eye_colour2"] if "eye_colour2" in cat else None,
                 paralyzed=cat["paralyzed"],
+                newborn_sprite=cat.get("sprite_newborn"),
                 kitten_sprite=(
                     cat["sprite_kitten"]
                     if "sprite_kitten" in cat
@@ -150,12 +171,12 @@ def json_load():
                     else "offwhite"
                 ),
                 white_patches=cat["white_patches"],
-                tortiebase=cat["tortie_base"],
-                tortiecolour=cat["tortie_color"],
-                tortiepattern=cat["tortie_pattern"],
-                pattern=cat["pattern"],
+                tortie_base=cat["tortie_base"],
+                tortie_colour=cat["tortie_color"],
+                tortie_pattern=cat["tortie_pattern"],
+                tortie_marking=cat["tortie_marking"],
                 skin=cat["skin"],
-                tint=cat["tint"] if "tint" in cat else "none",
+                tint=cat["tint"] if "tint" in cat else None,
                 scars=cat["scars"] if "scars" in cat else [],
                 accessory=cat["accessory"],
                 opacity=cat["opacity"] if "opacity" in cat else 100,
@@ -167,9 +188,9 @@ def json_load():
             # converting old specialty saves into new scar parameter
             if "specialty" in cat or "specialty2" in cat:
                 if cat["specialty"] is not None:
-                    new_cat.pelt.scars.append(cat["specialty"])
+                    new_cat.pelt.scars = (*new_cat.pelt.scars, cat["specialty"])
                 if cat["specialty2"] is not None:
-                    new_cat.pelt.scars.append(cat["specialty2"])
+                    new_cat.pelt.scars = (*new_cat.pelt.scars, cat["specialty2"])
 
             new_cat.adoptive_parents = (
                 cat["adoptive_parents"] if "adoptive_parents" in cat else []
@@ -189,7 +210,7 @@ def json_load():
             )
             new_cat.moons = cat["moons"]
 
-            if "facets" in cat:
+            if "facets" in cat and cat["facets"] is not None:
                 facets = [int(i) for i in cat["facets"].split(",")]
                 new_cat.personality = Personality(
                     trait=cat["trait"],
@@ -214,7 +235,6 @@ def json_load():
             new_cat.no_kits = cat["no_kits"]
             new_cat.no_mates = cat["no_mates"] if "no_mates" in cat else False
             new_cat.no_retire = cat["no_retire"] if "no_retire" in cat else False
-            new_cat.driven_out = cat["driven_out"] if "driven_out" in cat else False
 
             if "skill_dict" in cat:
                 new_cat.skills = CatSkills(cat["skill_dict"])
@@ -229,7 +249,7 @@ def json_load():
                     else:
                         new_cat.backstory = "clanborn"
                 new_cat.skills = CatSkills.get_skills_from_old(
-                    cat["skill"], new_cat.status.rank, new_cat.moons
+                    cat["skill"], new_cat.status.rank, new_cat.age
                 )
 
             new_cat.mate = cat["mate"] if type(cat["mate"]) is list else [cat["mate"]]
@@ -240,28 +260,37 @@ def json_load():
             )
 
             # checking for old dead
-            if cat.get("dead") or cat.get("df"):
-                if not new_cat.status.group or not new_cat.status.group.is_afterlife():
+            if (
+                cat.get("dead")
+                or cat.get("df")
+                or cat.get("driven_out")
+                or cat.get("exiled")
+                or cat.get("outside")
+            ):
+                if cat.get("dead") and not new_cat.status.group.is_afterlife():
                     if cat.get("df"):
-                        new_cat.status.send_to_afterlife(target=CatGroup.DARK_FOREST)
+                        new_cat.status.send_to_afterlife(
+                            target_ID=CatGroup.DARK_FOREST_ID
+                        )
                     elif cat.get("outside"):
                         new_cat.status.send_to_afterlife(
-                            target=CatGroup.UNKNOWN_RESIDENCE
+                            target_ID=CatGroup.UNKNOWN_RESIDENCE_ID
                         )
                     else:
-                        new_cat.status.send_to_afterlife(target=CatGroup.STARCLAN)
+                        new_cat.status.send_to_afterlife(target_ID=CatGroup.STARCLAN_ID)
 
-                # these should properly change the cat's status to align with old bool info
-                if not new_cat.dead and cat.get("exiled"):
-                    new_cat.status.exile_from_group()
-                if (
-                    not new_cat.dead
-                    and cat.get("outside")
-                    and not new_cat.status.is_outsider
-                ):
-                    new_cat.status.become_lost()
+                else:
+                    # these should properly change the cat's status to align with old bool info
+                    if cat.get("exiled"):
+                        new_cat.status.exile_from_group()
+                    elif cat.get("outside") and not new_cat.status.is_outsider:
+                        new_cat.status.become_lost()
 
-            new_cat.dead_for = cat["dead_moons"]
+                    if cat.get("driven_out"):
+                        new_cat.status.change_group_nearness(CatGroup.PLAYER_CLAN_ID)
+
+            if cat.get("dead_moons"):
+                new_cat.dead_for = cat["dead_moons"]
             new_cat.experience = cat["experience"]
             new_cat.apprentice = cat["current_apprentice"]
             new_cat.former_apprentices = cat["former_apprentices"]
@@ -280,6 +309,9 @@ def json_load():
                     cat["scar_event"] if "scar_event" in cat else [],
                 )
 
+            new_cat.starclan_affinity = cat.get("starclan_affinity", 0)
+            new_cat.dark_forest_affinity = cat.get("dark_forest_affinity", 0)
+
             all_cats.append(new_cat)
 
         except KeyError as e:
@@ -295,6 +327,12 @@ def json_load():
 
     # replace cat ids with cat objects and add other needed variables
     for cat in all_cats:
+        if cat.status.rank in (CatRank.LEADER, CatRank.DEPUTY, CatRank.MEDICINE_CAT):
+            if cat.status.group == CatGroup.STARCLAN:
+                game.starclan.adjust_facets_by_cat(cat)
+            elif cat.status.group == CatGroup.DARK_FOREST:
+                game.dark_forest.adjust_facets_by_cat(cat)
+
         cat.load_conditions()
 
         # this is here to handle paralyzed cats in old saves
@@ -321,26 +359,11 @@ def json_load():
             )
             switch_set_value(Switch.traceback, e)
             raise
-
-        cat.inheritance = Inheritance(cat)
-
-        try:
-            # initialization of thoughts
-            cat.thoughts()
-        except Exception as e:
-            logger.exception(
-                f"There was an error when thoughts for cat #{cat} are created."
-            )
-            switch_set_value(
-                Switch.error_message,
-                f"There was an error when thoughts for cat #{cat} are created.",
-            )
-            switch_set_value(Switch.traceback, e)
-            raise
-
-        # Save integrety checks
         if constants.CONFIG["save_load"]["load_integrity_checks"]:
             save_check()
+
+    inheritance_db.clear_stored_data()
+    inheritance_db.load_inheritances(Cat, get_faded_ids)
 
 
 def csv_load(all_cats):
@@ -448,16 +471,16 @@ def csv_load(all_cats):
                 (
                     the_cat.pelt.reverse,
                     the_cat.pelt.white_patches,
-                    the_cat.pelt.pattern,
+                    the_cat.pelt.tortie_marking,
                 ) = (attr[18], attr[19], attr[20])
                 switch_set_value(
                     Switch.error_message,
                     f"There was an error loading cat # {str(attr[0])} (code: 8)",
                 )
                 (
-                    the_cat.pelt.tortiebase,
-                    the_cat.pelt.tortiepattern,
-                    the_cat.pelt.tortiecolour,
+                    the_cat.pelt.tortie_base,
+                    the_cat.pelt.tortie_pattern,
+                    the_cat.pelt.tortie_colour,
                 ) = (attr[21], attr[22], attr[23])
                 switch_set_value(
                     Switch.error_message,
@@ -474,7 +497,7 @@ def csv_load(all_cats):
                 )
                 the_cat.skill = attr[25]
                 if len(attr) > 28:
-                    the_cat.pelt.accessory = [attr[28]]
+                    the_cat.pelt.accessory = (attr[28],)
                 if len(attr) > 29:
                     the_cat.specialty2 = attr[29]
                 else:
@@ -513,7 +536,7 @@ def csv_load(all_cats):
                         the_cat.mate = [attr[31]]
                     if len(attr) >= 32:
                         # Is the cat dead
-                        the_cat.status.send_to_afterlife(target=CatGroup.STARCLAN)
+                        the_cat.status.send_to_afterlife(target_ID=CatGroup.STARCLAN_ID)
                         the_cat.pelt.cat_sprites["dead"] = attr[33]
                 switch_set_value(
                     Switch.error_message,
@@ -666,7 +689,34 @@ def version_convert(version_info):
                     c.permanent_condition[con].pop("moons_with")
                 c.permanent_condition[con]["moon_start"] = game.clan.age - moons_with
 
+    # freshkill start for older clans
     if version < 3 and game.clan.freshkill_pile:
-        # freshkill start for older clans
         add_prey = game.clan.freshkill_pile.amount_food_needed() * 2
         game.clan.freshkill_pile.add_freshkill(add_prey)
+
+    # death history text revision
+    if version < 4:
+        for c in Cat.all_cats.values():
+            if not c.status.is_leader:
+                continue
+            for death in c.history.died_by:
+                if death["text"] == "multi_lives":
+                    # skip these as changing them will break stuff
+                    continue
+                death["text"] = (
+                    "m_c lost a life when {PRONOUN/m_c/subject} " + death["text"]
+                )
+                # check if a period is present and append one if not
+                if death["text"][-1] != ".":
+                    death["text"] += "."
+
+    # generate points of interest
+    if version < 5:
+        # remove any already loaded points of interest
+        clear_pois()
+
+        generate_and_add_new_poi(biome=game.clan.biome, category=PoiType.GATHERING)
+        generate_and_add_new_poi(biome=game.clan.biome, category=PoiType.MOONPLACE)
+
+        for i in range(3):
+            generate_and_add_new_poi(biome=game.clan.biome, category=PoiType.TERRAIN)
