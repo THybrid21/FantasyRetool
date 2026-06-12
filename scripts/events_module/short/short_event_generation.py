@@ -23,6 +23,7 @@ from scripts.events_module.event_filters import (
     cat_for_event,
     get_frequency,
     find_new_frequency,
+    event_for_poi,
 )
 from scripts.events_module.short.short_event import ShortEvent
 from scripts.game_structure import constants, game
@@ -242,9 +243,11 @@ def generate_event_objects(event_triggered, biome, frequency) -> list:
     :param frequency: The frequency to pull events for
     """
     debug_freq = constants.CONFIG["event_generation"]["debug_override_frequency"]
+    if debug_freq:
+        frequency = debug_freq
 
     file_path = f"{event_triggered}/{biome}.json"
-    load_name = f"{file_path}_{debug_freq if debug_freq else frequency}"
+    load_name = f"{file_path}_{frequency}"
 
     try:
         if file_path in loaded_events:
@@ -288,6 +291,7 @@ def generate_event_objects(event_triggered, biome, frequency) -> list:
                     season=event["season"] if "season" in event else ["any"],
                     sub_type=event["sub_type"] if "sub_type" in event else [],
                     tags=event["tags"] if "tags" in event else [],
+                    poi=event["poi"] if "poi" in event else {},
                     text=event_text,
                     new_accessory=(
                         event["new_accessory"] if "new_accessory" in event else []
@@ -377,6 +381,9 @@ def filter_events(
 
         # check tags
         if not event_for_tags(event.tags, main_cat, random_cat):
+            continue
+
+        if not event_for_poi(event.poi):
             continue
 
         if not game.clan.leader and "lead_name" in event.text:
@@ -600,6 +607,7 @@ def filter_events(
             ).copy(),
             injuries=r_c_injuries,
             return_id=False,
+            tags=chosen_event.tags,
         )
 
         if not chosen_cat:
