@@ -192,7 +192,7 @@ class Sprites:
 			# convert back into a surface
 			_sprite = recolor_sprite.make_surface()
 			# add it to our sprite dict!
-			self.sprites[f"{name}_{color_name}{sprite_index}"] = _sprite
+			self.sprites[f"{name}_{color_name}_{folder}_{sprite_index}"] = _sprite
 			# close the pixel array now that we're done
 			recolor_sprite.close()
 

@@ -900,15 +900,15 @@ class Pregnancy_Events:
         for species in species_list:
             if cat:
                 if (
-                    any("no_breed" in tag for tag in game.species["species"][species])
-                    or any("exc_breed" in tag for tag in game.species["species"][species]) and species != cat.species
-                    or any("diff_breed" in tag for tag in game.species["species"][species]) and species == cat.species
+                    any("no_breed" in tag for tag in constants.SPECIES["species"][species])
+                    or any("exc_breed" in tag for tag in constants.SPECIES["species"][species]) and species != cat.species
+                    or any("diff_breed" in tag for tag in constants.SPECIES["species"][species]) and species == cat.species
                     ):
                     weights.pop((species_list.index(species)))
                     species_list.remove(species)
             else:
                 if (
-                    any("no_breed" in tag for tag in game.species["species"][species])
+                    any("no_breed" in tag for tag in constants.SPECIES["species"][species])
                     ):
                     weights.pop((species_list.index(species)))
                     species_list.remove(species)

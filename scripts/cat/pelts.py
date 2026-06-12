@@ -433,7 +433,7 @@ class Pelt:
         self._sps_index = val
 
     @staticmethod
-    def generate_new_pelt(gender: str, parents: tuple = (), age: str = "adult"):
+    def generate_new_pelt(gender: str, species:str, parents: tuple = (), age: str = "adult"):
         new_pelt = Pelt(sps_index = (list(constants.SPECIES["species"]).index(species)) + 1)
 
         pelt_white = new_pelt.init_pattern_color(parents, gender)
@@ -727,7 +727,7 @@ class Pelt:
                 weights = [1, 1, 1, 1]
 
         chosen_pelt_color = choice(
-            random.choices(getattr(Pelt, f"colour_categories_{self.index}"), weights=weights, k=1)[0]
+            random.choices(getattr(Pelt, f"colours_categories_{self.index}"), weights=weights, k=1)[0]
         )
 
         # ------------------------------------------------------------------------------------------------------------#
@@ -1163,7 +1163,6 @@ class Pelt:
             getattr(Pelt, f"mostly_white_{self.index}"),
             ["FULLWHITE"],
         ]
-        print(white_list)
         chosen_white_patches = choice(
             random.choices(white_list, weights=weights, k=1)[0]
         )

@@ -464,6 +464,7 @@ class Cat:
         # APPEARANCE
         self.pelt = Pelt.generate_new_pelt(
             self.gender,
+            self.species,
             [Cat.fetch_cat(i) for i in (self.parent1, self.parent2) if i],
             self.age,
         )

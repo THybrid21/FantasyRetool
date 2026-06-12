@@ -205,7 +205,7 @@ def generate_sprite(
         eyes = sprites.sprites[sprite_name].copy()
         new_sprite.blit(eyes, (0, 0))
         if cat.pelt.eye_colour2 != None:
-            heterochromia_name = f"{getattr(sprites, f"EYE_DATA_{n}")['spritesheet'][0]}_{cat.pelt.eye_colour2}{cat_sprite}"
+            heterochromia_name = f"{getattr(sprites, f"EYE_DATA_{n}")['spritesheet'][0]}{n}_{cat.pelt.eye_colour2}{cat_sprite}"
             eyes2 = sprites.sprites[heterochromia_name].copy()
             eyes2.blit(
                 sprites.sprites["heterochromiamask" + f"{n}_" + cat_sprite],
@@ -329,7 +329,7 @@ def generate_sprite(
                 for accessory in cat_accessories:
                     if accessory in getattr(Pelt, category):
                         if accessory in cat.pelt.plant_accessories:
-                            sprite_name = f"{sprites.PLANT_DATA['spritesheet']}{accessory}{n}_{cat_sprite}"
+                            sprite_name = f"{sprites.PLANT_DATA['spritesheet']}{n}_{accessory}{cat_sprite}"
                             new_sprite.blit(
                                 _recolor_lineart(
                                     sprites.sprites[sprite_name],
@@ -339,7 +339,7 @@ def generate_sprite(
                                 (0, 0),
                             )
                         elif accessory in cat.pelt.wild_accessories:
-                            sprite_name = f"{sprites.WILD_DATA['spritesheet']}{accessory}{n}_{cat_sprite}"
+                            sprite_name = f"{sprites.WILD_DATA['spritesheet']}{n}_{accessory}{cat_sprite}"
                             new_sprite.blit(
                                 _recolor_lineart(
                                     sprites.sprites[sprite_name],
@@ -349,7 +349,7 @@ def generate_sprite(
                                 (0, 0),
                             )
                         elif accessory in cat.pelt.collar_accessories:
-                            sprite_name = f"{sprites.COLLAR_DATA['spritesheet']}{accessory}{n}_{cat_sprite}"
+                            sprite_name = f"{sprites.COLLAR_DATA['spritesheet']}{accessory}_{n}_{cat_sprite}"
                             new_sprite.blit(
                                 _recolor_lineart(
                                     sprites.sprites[sprite_name],
